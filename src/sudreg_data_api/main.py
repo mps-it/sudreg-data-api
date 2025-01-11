@@ -28,6 +28,7 @@ class SudskiRegistarDataAPI:
         headers (dict): The headers to be used for the API requests.
         last_request_time (datetime): The time of the last API request.
         seconds_between_requests (int): The number of seconds between requests.
+        total_count (int): The total number of available records.
    """
 
     def __init__(self, client_id, client_secret, production=False, public=True):
@@ -58,7 +59,8 @@ class SudskiRegistarDataAPI:
         self.omit_nulls = None
         self.no_data_error = None
         self.last_request_time = datetime.now() - timedelta(seconds=60)
-        self.seconds_between_requests = int(60 / self.requests_per_minute) + 1
+        self.seconds_between_requests = int(60 / self.requests_per_minute)
+        self.total_count = 0
 
         if not self.token:
             self.get_token()
@@ -67,6 +69,9 @@ class SudskiRegistarDataAPI:
             'Authorization': 'Bearer ' + self.token,
             'Content-Type': 'application/json',
         }
+
+    def get_total_count(self):
+        return self.total_count
 
     def execute_get_request(self, endpoint, params):
         """
@@ -82,23 +87,26 @@ class SudskiRegistarDataAPI:
            Raises:
                requests.HTTPError: If the API response was unsuccessful.
         """
-        self.throttle_requests()
+        self.total_count = 0
+        self.throttle_requests(endpoint)
         response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
         response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
+        self.total_count = int(response.headers.get('X-Total-Count', 0))
         return response.json()
 
-    def throttle_requests(self):
+    def throttle_requests(self, endpoint):
         """
             Throttles the requests to the Sudski Registar Data API.
 
             The API has a limit on the number of requests that can be made per minute.
             This method ensures that the requests are made at the correct rate.
         """
-        time_since_last_request = datetime.now() - self.last_request_time
-        if time_since_last_request.total_seconds() < self.seconds_between_requests:
-            sleep_time = self.seconds_between_requests - time_since_last_request.total_seconds()
-            time.sleep(sleep_time)
-        self.last_request_time = datetime.now()
+        if endpoint == "detalji_subjekta":
+            time_since_last_request = datetime.now() - self.last_request_time
+            if time_since_last_request.total_seconds() < self.seconds_between_requests:
+                sleep_time = self.seconds_between_requests - time_since_last_request.total_seconds()
+                time.sleep(sleep_time)
+            self.last_request_time = datetime.now()
 
     def get_token(self):
         """
