@@ -64,7 +64,7 @@ class SudskiRegistarDataAPI:
             self.get_token()
 
         self.headers = {
-            'Authorization': self.token,
+            'Authorization': 'Bearer ' + self.token,
             'Content-Type': 'application/json',
         }
 
