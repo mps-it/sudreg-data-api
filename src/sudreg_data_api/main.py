@@ -1,4 +1,6 @@
+import time
 from base64 import b64encode
+from datetime import datetime, timedelta
 
 import requests
 
@@ -24,6 +26,8 @@ class SudskiRegistarDataAPI:
         token (str): The access token for the Sudski Registar Data API.
         snapshot_id (str): Snapshot ID for the API requests.
         headers (dict): The headers to be used for the API requests.
+        last_request_time (datetime): The time of the last API request.
+        seconds_between_requests (int): The number of seconds between requests.
    """
 
     def __init__(self, client_id, client_secret, production=False, public=True):
@@ -53,6 +57,8 @@ class SudskiRegistarDataAPI:
         self.snapshot_id = None
         self.omit_nulls = None
         self.no_data_error = None
+        self.last_request_time = datetime.now() - timedelta(seconds=60)
+        self.seconds_between_requests = int(60 / self.requests_per_minute) + 1
 
         if not self.token:
             self.get_token()
@@ -61,6 +67,38 @@ class SudskiRegistarDataAPI:
             'Authorization': self.token,
             'Content-Type': 'application/json',
         }
+
+    def execute_get_request(self, endpoint, params):
+        """
+            Executes a GET request to the Sudski Registar Data API.
+
+            Args:
+                endpoint (str): The endpoint for the API request.
+                params (dict): The parameters for the API request.
+
+            Returns:
+                dict: The response from the API as a dictionary.
+
+           Raises:
+               requests.HTTPError: If the API response was unsuccessful.
+        """
+        self.throttle_requests()
+        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
+        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
+        return response.json()
+
+    def throttle_requests(self):
+        """
+            Throttles the requests to the Sudski Registar Data API.
+
+            The API has a limit on the number of requests that can be made per minute.
+            This method ensures that the requests are made at the correct rate.
+        """
+        time_since_last_request = datetime.now() - self.last_request_time
+        if time_since_last_request.total_seconds() < self.seconds_between_requests:
+            sleep_time = self.seconds_between_requests - time_since_last_request.total_seconds()
+            time.sleep(sleep_time)
+        self.last_request_time = datetime.now()
 
     def get_token(self):
         """
@@ -174,9 +212,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "bris_pravni_oblici"
         params = self.main_parameters(expand_relations, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_bris_registri(self, expand_relations=None, history_columns=None):
         """
@@ -200,9 +236,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "bris_registri"
         params = self.main_parameters(expand_relations, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_counts(self):
         """
@@ -220,9 +254,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "counts"
         params = self.main_parameters(None, None)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_detalji_subjekta(self, expand_relations=None, tip_identifikatora=None, identifikator=None):
         """
@@ -255,9 +287,7 @@ class SudskiRegistarDataAPI:
             params["identifikator"] = identifikator
         else:
             raise ValueError("identifikator is required")
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_djelatnosti_podruznica(self, offset=None, limit=None):
         """
@@ -285,9 +315,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "djelatnosti_podruznica"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_drzave(self, history_columns=None):
         """
@@ -306,9 +334,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "drzave"
         params = self.main_parameters(None, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_email_adrese(self, offset=None, limit=None):
         """
@@ -334,9 +360,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "email_adrese"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_email_adrese_podruznica(self, offset=None, limit=None):
         """
@@ -362,9 +386,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "email_adrese_podruznica"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_evidencijske_djelatnosti(self, offset=None, limit=None):
         """
@@ -392,9 +414,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "evidencijske_djelatnosti"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_gfi(self, offset=None, limit=None):
         """
@@ -423,9 +443,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "gfi"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_inozemni_registri(self, offset=None, limit=None):
         """
@@ -452,9 +470,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "inozemni_registri"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_jezici(self, history_columns=None):
         """
@@ -473,9 +489,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "jezici"
         params = self.main_parameters(None, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_postupci(self, offset=None, limit=None):
         """
@@ -500,9 +514,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "postupci"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_tvrtke(self, offset=None, limit=None):
         """
@@ -530,9 +542,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "tvrtke"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_skracene_tvrtke(self, offset=None, limit=None):
         """
@@ -556,9 +566,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "skracene_tvrtke"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_prijevodi_tvrtki(self, offset=None, limit=None):
         """
@@ -583,9 +591,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "prijevodi_tvrtki"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_prijevodi_skracenih_tvrtki(self, offset=None, limit=None):
         """
@@ -610,9 +616,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "prijevodi_skracenih_tvrtki"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_sjedista(self, offset=None, limit=None):
         """
@@ -647,9 +651,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "sjedista"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_pravni_oblici(self, expand_relations=None, offset=None, limit=None):
         """
@@ -675,9 +677,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "pravni_oblici"
         params = self.paging_parameters(expand_relations, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_pretezite_djelatnosti(self, offset=None, limit=None):
         """
@@ -703,9 +703,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "pretezite_djelatnosti"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_predmeti_poslovanja(self, expand_relations=None, offset=None, limit=None):
         """
@@ -738,9 +736,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "predmeti_poslovanja"
         params = self.paging_parameters(expand_relations, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_temeljni_kapitali(self, offset=None, limit=None):
         """
@@ -767,9 +763,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "temeljni_kapitali"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_nazivi_podruznica(self, offset=None, limit=None):
         """
@@ -805,9 +799,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "nazivi_podruznica"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_skraceni_nazivi_podruznica(self, offset=None, limit=None):
         """
@@ -832,9 +824,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "skraceni_nazivi_podruznica"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_sjedista_podruznica(self, offset=None, limit=None):
         """
@@ -868,9 +858,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "sjedista_podruznica"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_objave_priopcenja(self, offset=None, limit=None):
         """
@@ -896,9 +884,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "objave_priopcenja"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_promjene(self, offset=None, limit=None):
         """
@@ -924,9 +910,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "promjene"
         params = self.paging_parameters(None, offset, limit)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_subjekti(self, tvrtka_naziv=None, only_active=None, offset=None, limit=None):
         """
@@ -970,9 +954,7 @@ class SudskiRegistarDataAPI:
             params["tvrtka_naziv"] = tvrtka_naziv
         if only_active is not None:
             params["only_active"] = only_active
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_snapshots(self):
         """
@@ -1002,9 +984,7 @@ class SudskiRegistarDataAPI:
             params["no_data_error"] = self.no_data_error
         if self.omit_nulls is not None:
             params["omit_nulls"] = self.omit_nulls
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_nacionalna_klasifikacija_djelatnosti(self, history_columns=None):
         """
@@ -1030,9 +1010,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "nacionalna_klasifikacija_djelatnosti"
         params = self.main_parameters(None, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_statusi(self):
         """
@@ -1049,9 +1027,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "statusi"
         params = self.main_parameters(None, None)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_sudovi(self, expand_relations=None, history_columns=None):
         """
@@ -1078,9 +1054,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "sudovi"
         params = self.main_parameters(expand_relations, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_valute(self, expand_relations=None, history_columns=None):
         """
@@ -1101,9 +1075,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "valute"
         params = self.main_parameters(expand_relations, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_vrste_gfi_dokumenata(self):
         """
@@ -1118,9 +1090,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "vrste_gfi_dokumenata"
         params = self.main_parameters(None, None)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_vrste_postupaka(self):
         """
@@ -1137,9 +1107,7 @@ class SudskiRegistarDataAPI:
 
         endpoint = "vrste_postupaka"
         params = self.main_parameters(None, None)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
 
     def get_vrste_pravnih_oblika(self, history_columns=None):
         """
@@ -1158,6 +1126,4 @@ class SudskiRegistarDataAPI:
 
         endpoint = "vrste_pravnih_oblika"
         params = self.main_parameters(None, history_columns)
-        response = requests.get(self.base_url_api + endpoint, headers=self.headers, params=params)
-        response.raise_for_status()  # Raises a HTTPError if the response was unsuccessful
-        return response.json()
+        return self.execute_get_request(endpoint, params)
