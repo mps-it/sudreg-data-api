@@ -24,3 +24,14 @@ api = SudskiRegistarDataAPI("Subscription-Key")
 print(api.get_subjekt_detalji(tip_identifikatora="oib", identifikator="53056966535", expand_relations=True))
 
 ```
+
+## Documentation
+
+[Upute za razvojne inženjere - v3.0.0.pdf](https://sudreg-data.gov.hr/ords/r/srn_rep/116/files/static/v11/Upute%20za%20razvojne%20in%C5%BEenjere%20-%20v3.0.0.pdf)
+
+Zadnja verzija - preporučena za novi razvoj
+Open API specifikacija v3 servisa za javne korisnike: [open_api_javni_v3.json](https://sudreg-data.gov.hr/api/javni/dokumentacija/open_api)
+Ogledna baza podataka v3 servisa za javne korisnike (Oracle dijalekt): [ogledna_baza_javni.sql](https://sudreg-data.gov.hr/api/javni/dokumentacija/reference_database_script)
+ER model podataka v3 servisa za javne korisnike: [er_model_javni.pdf](https://sudreg-data.gov.hr/api/javni/dokumentacija/er_diagram)
+Changelog za javne korisnike: [changelog.html](https://sudreg-data.gov.hr/api/javni/dokumentacija/changelog)
+[SwaggerHub za javne korisnike](https://app.swaggerhub.com/apis/mpu.gov.hr/sudreg_javni/)
